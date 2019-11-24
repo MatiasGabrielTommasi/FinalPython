@@ -8,7 +8,7 @@
     <h3>Clientes de Conesa</h3>
 </div>
 <div>
-	<form class="form" method="POST" role="form" action="/clientesFiltro">
+	<form id="miFormulario" class="form" method="POST" role="form" action="/clientesFiltro">
 		{{ formulario.csrf_token }}
 		{{ formulario.name }}
 	
@@ -23,33 +23,17 @@
 	</div>
 </div>
 </form>
-{% if transacciones|length == 0 %}
+{% if paises|length == 0 and validador == 1 %}
 		<div class="panel" style="background-color:#ffc107!important">
 		  <div class="panel-body">
 		    No se encontraron registros con el criterio de búsqueda indicado
 		  </div>
 		</div>
 	{% else %}
-<div style="max-height:500px;overflow-y:scroll;overflow-x:hidden;">
-	
-		<table class="table table-hover">
-		  <thead>
-		    <tr>
-				{% for i in encabezados %}
-			      <th scope="col">{{i}}</th>
-			    {% endfor %}
-		    </tr>
-		  </thead>
-		  <tbody>			     
-		  	{% for i in transacciones %}
-		    	<tr>
-		    		{% for key in i %}
-				      <td scope="col">{{i[key]}}</td>
-				    {% endfor %}
-			    </tr>
-		    {% endfor %}
-		  </tbody>
-		</table>
+<div>
+	{% for i in paises %}
+	    <a scope="col" class="btn btn-info" style="font-size: 15px;margin-bottom: 10px;" href="clientes/{{i}}">{{i}}</a><br/>
+    {% endfor %}
 </div>
 	{% endif %}
 </div>

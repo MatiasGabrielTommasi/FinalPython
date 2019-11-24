@@ -22,13 +22,8 @@ app.config['SECRET_KEY'] = 'un string que funcione como llave'
 def index():
     return render_template('index.html', fecha_actual=datetime.utcnow())
 
-@app.route('/productos')
-def productos():
-    return render_template('productos.html')
-
 @app.route('/clientes', methods=['GET', 'POST'])
 def clientes():
-    print('ventas')
     iClientes = []
     iEncabezados = []    
     if 'username' in session:
@@ -47,13 +42,35 @@ def clientes():
     else:
         return ingresar()
 
+@app.route('/clientes/<pais>')
+def clientesPais(pais):
+    iClientes = []
+    iEncabezados = []    
+    iClientesMostrados = []
+    if 'username' in session:
+        try:
+            iClientes = AccesoArchivo.AbrirArchivoCSV('clientes.csv')
+            session['iClientes'] = iClientes
+                
+            for item in iClientes:
+                print(item)
+                if str(item['País']).upper() == pais.upper():
+                    iClientesMostrados.append(item)
+
+            iEncabezados = iClientes[0].keys()
+            
+        except Exception as e:
+            flash('Error: ' + str(e))
+        finally:
+            return render_template('clientespais.html', transacciones=iClientesMostrados, encabezados=iEncabezados)
+    else:
+        return ingresar()
 
 @app.route('/clientesFiltro', methods=['GET', 'POST'])
 def clientesFiltro():
-    print('clientes filtro')
     iClientes = []
-    iClientesResult = []
-    iEncabezados = [] 
+    iPaises = []
+    validador = 0
     formulario = ClientesFiltroForm()
     if 'username' in session:
         try:
@@ -64,21 +81,21 @@ def clientesFiltro():
                 iClientes = session['iClientes']
                 iClientesResult = iClientes
 
-            iEncabezados = iClientes[0].keys()
             if formulario.is_submitted():  # Acá hice el POST si es True
                 r = Utilidades.ValidarSoloLetras(formulario.txtPais.data)
                 if r:
-                    iClientesResult = []
                     for item in iClientes:
-                        if formulario.txtPais.data == '' or str(item['País']).upper() == formulario.txtPais.data.upper():
-                            iClientesResult.append(item)
+                        if str(item['País']).upper().startswith(formulario.txtPais.data.upper()):
+                            if item['País'] not in str(iPaises):
+                                iPaises.append(item['País'])
+
+                    validador = 1
                 else:
                     flash('Debe ingresar un dato válido (sólo letras)')
         except Exception as e:
-            print(e)
             flash('Error: ' + str(e))
         finally:
-            return render_template('clientesFiltro.html', transacciones = iClientesResult, encabezados=iEncabezados, formulario=formulario)
+            return render_template('clientesFiltro.html', paises = iPaises, validador=validador, formulario=formulario)
     else:
         return ingresar()
 
@@ -96,11 +113,7 @@ def saludar():
 
 @app.route('/sobre')
 def sobre():
-
-    if 'username' in session:
-        return render_template('sobre.html')
-    else:
-        return ingresar()
+    return render_template('sobre.html')
 
 @app.route('/saludar/<usuario>')
 def saludar_persona(usuario):
@@ -126,7 +139,7 @@ def ingresar():
     if not 'username' in session:
         formulario = LoginForm()
         if formulario.validate_on_submit():
-            with open('usuarios') as archivo:
+            with open('usuarios.csv') as archivo:
                 archivo_csv = csv.reader(archivo)
                 registro = next(archivo_csv)
                 while registro:
@@ -150,12 +163,15 @@ def registrar():
     formulario = RegistrarForm()
     if formulario.validate_on_submit():
         if formulario.password.data == formulario.password_check.data:
-            with open('usuarios', 'a+') as archivo:
-                archivo_csv = csv.writer(archivo)
-                registro = [formulario.usuario.data, formulario.password.data]
-                archivo_csv.writerow(registro)
-            flash('Usuario creado correctamente')
-            return redirect(url_for('ingresar'))
+            if AccesoArchivo.ValidarUsuarioNuevo(formulario.usuario.data):               
+                with open('usuarios.csv', 'a+') as archivo:
+                    archivo_csv = csv.writer(archivo)
+                    registro = [formulario.usuario.data, formulario.password.data]
+                    archivo_csv.writerow(registro)
+                flash('Usuario creado correctamente')
+                return redirect(url_for('ingresar'))
+            else:
+                flash("Usuario previamente registrado")
         else:
             flash('Las passwords no matchean')
     return render_template('registrar.html', form=formulario)
